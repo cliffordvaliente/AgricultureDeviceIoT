@@ -33,8 +33,8 @@ unsigned long prevMillis = 0;                                // Previous time in
 const long intervalScrolling = 800;                          // Time interval for scrolling effect on LCD
 
 // WiFi Configurations
-char ssid[] = "Gylden72 GUTTA";  // SSID of your WiFi
-char pass[] = "TerjeGsNett";     // Password of your WiFi
+char ssid[] = "";                // SSID of your WiFi
+char pass[] = "";                // Password of your WiFi
 WiFiServer server(80);           // Setting up a web server on port 80
 
 void setup() {
