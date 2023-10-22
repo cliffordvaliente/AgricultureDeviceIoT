@@ -34,8 +34,8 @@ const long intervalScrolling = 400;                          // Time interval fo
 int scrollIndex = 0;
 
 // WiFi Configurations
-char ssid[] = "Gylden72 GUTTA";  // SSID of your WiFi
-char pass[] = "TerjeGsNett";     // Password of your WiFi
+char ssid[] = "";  // SSID of your WiFi
+char pass[] = "";     // Password of your WiFi
 WiFiServer server(80);           // Setting up a web server on port 80
 
 void setup() {
