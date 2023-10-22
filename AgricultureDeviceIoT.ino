@@ -30,7 +30,8 @@ int contrast = 30;                                           // Contrast for the
 LiquidCrystal lcd(rs, en, d4, d5, d6, d7);                   // Initializing the LCD object
 String displayString = "";                                   // String to hold the message to be displayed on LCD
 unsigned long prevMillis = 0;                                // Previous time in milliseconds
-const long intervalScrolling = 800;                          // Time interval for scrolling effect on LCD
+const long intervalScrolling = 400;                          // Time interval for scrolling effect on LCD
+int scrollIndex = 0;
 
 // WiFi Configurations
 char ssid[] = "";                // SSID of your WiFi
@@ -51,7 +52,7 @@ void loop() {
   updateSensorData();      // Fetch sensor data
   scrollDisplay();         // Scroll the display data on LCD
   handleClientRequests();  // Handle incoming web requests
-  delay(100);              // Delay for 100 milliseconds
+  delay(50);               // Delay for 50 milliseconds
 }
 
 // Initialize the MQ-2 gas sensor
@@ -76,10 +77,14 @@ int readSoilMoisture() {
 // Scroll the message on the LCD
 void scrollDisplay() {
   if (millis() - prevMillis >= intervalScrolling) {
-    displayString = displayString + displayString.charAt(0);
-    displayString.remove(0, 1);
     lcd.setCursor(0, 0);
-    lcd.print(displayString.substring(0, 16));
+    lcd.print(displayString.substring(scrollIndex, scrollIndex + 16));
+
+    scrollIndex++;
+    if (scrollIndex + 16 > displayString.length()) {
+      scrollIndex = 0;  // reset to the beginning when we've reached the end
+    }
+
     prevMillis = millis();
   }
 }
@@ -91,9 +96,15 @@ void updateSensorData() {
   float gasPPM = MQ2.readSensor();
   int soilMoisture = map(readSoilMoisture(), drySoil, wetSoil, 0, 100);
 
-  if (displayString.length() == 0) {
-    displayString = "Temp: " + String(temperature) + "C   Hum: " + String(humidity) + "%   Gas: " + String(gasPPM) + "PPM   Soil: " + String(soilMoisture) + "%     ";
-  }
+  displayString = "Temp: " + String(temperature) + "C   Hum: " + String(humidity) + "%   Gas: " + String(gasPPM) + "PPM   Soil: " + String(soilMoisture) + "%     ";
+  displayString += "                    ";  // Add padding for smooth scrolling
+
+  // Print sensor data to the serial monitor
+  Serial.println("Temperature: " + String(temperature) + "C");
+  Serial.println("Humidity: " + String(humidity) + "%");
+  Serial.println("Gas Quality (PPM): " + String(gasPPM));
+  Serial.println("Soil Moisture (%): " + String(soilMoisture));
+  Serial.println("-----------------------------------------");
 }
 
 // Handle client requests and serve the sensor data over HTTP
@@ -119,43 +130,32 @@ void handleClientRequests() {
     client.println("Connection: close");
     client.println();
     client.println("<!DOCTYPE HTML><html>");
-    client.println("<style>");
-    client.println("body { font-family: Arial, sans-serif; }");
-    client.println(".grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }");
-    client.println(".sensor { border: 1px solid #ddd; padding: 15px; border-radius: 7px; }");
-    client.println(".title { font-weight: bold; }");
-    client.println(".bar { height: 25px; }");
-    client.println("</style>");
-    client.println("<div class='grid'>");
-
-    //  HTML code for displaying sensor data
-    client.println("<div class='sensor'>");
-    client.println("<div class='title'>Temperature</div>");
-    client.println("<div>" + String(temperature) + "&deg;C (" + temperatureDesc + ")</div>");
-    client.println("</div>");
-
-    client.println("<div class='sensor'>");
-    client.println("<div class='title'>Humidity</div>");
-    client.println("<div>" + String(humidity) + "% (" + humidityDesc + ")</div>");
-    client.println("</div>");
-
-    client.println("<div class='sensor'>");
-    client.println("<div class='title'>Gas Quality</div>");
-    client.println("<div>" + String(gasPPM) + " PPM (" + gasDesc + ")</div>");
-    client.println("</div>");
-
-    client.println("<div class='sensor'>");
-    client.println("<div class='title'>Soil Moisture</div>");
-    client.println("<div>" + String(soilMoisture) + "% (" + soilDesc + ")</div>");
-    client.println("</div>");
-
-    client.println("</div>");
+    client.println("<head>");
+    client.println("<meta http-equiv='refresh' content='10';URL='http://192.168.68.132/'>");  // Auto-refresh every 5 seconds
+    client.println("<script>");
+    client.println("var count = 10;");  // Begin countdown from 10 seconds
+    client.println("function countdown() {");
+    client.println("  document.getElementById('timer').innerHTML = 'Refreshing in: ' + count + ' seconds';");
+    client.println("  count--;");
+    client.println("  if(count < 0) count = 10;");  // Reset to 10 seconds when countdown reaches 0
+    client.println("  setTimeout(countdown, 1000);");
+    client.println("}");
+    client.println("</script>");
+    client.println("</head>");
+    client.println("<body onload='countdown()'>");
+    client.println("<h1>Sensor Data</h1>");
+    client.println("<p>Temperature: " + String(temperature) + "C (" + temperatureDesc + ")</p>");
+    client.println("<p>Humidity: " + String(humidity) + "% (" + humidityDesc + ")</p>");
+    client.println("<p>Gas Quality: " + String(gasPPM) + "PPM (" + gasDesc + ")</p>");
+    client.println("<p>Soil Moisture: " + String(soilMoisture) + "% (" + soilDesc + ")</p>");
+    client.println("<div id='timer'>Refreshing in: 10 seconds</div>");  // Display timer starting from 10 seconds
+    client.println("</body>");
     client.println("</html>");
     client.stop();
   }
 }
 
-// Function to connect to the WiFi network
+// Connect to the WiFi network
 void connectToWiFi() {
   WiFi.begin(ssid, pass);
   while (WiFi.status() != WL_CONNECTED) {
